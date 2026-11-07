@@ -40,6 +40,41 @@
   var tz = onTV ? window.tizen : mockTizen();
   var $ = function (id) { return document.getElementById(id); };
 
+  // ---------- diagnostic log ----------
+  // Events are kept in localStorage and sent to a small log receiver on the home PC when it is
+  // running (tools/log-server.js). Nothing is lost while the PC is off; the list is capped.
+  var LOG_URL = 'http://192.168.1.26:8914/log';
+  var LOG_KEY = 'tvdash.log';
+  var LOG_MAX = 400;
+  var flushing = false;
+  function readLog() { try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch (e) { return []; } }
+  function log(ev, data) {
+    if (!onTV) return;
+    var list = readLog();
+    list.push({ t: new Date().toISOString(), v: String(window.__dashVersion || '').slice(0, 7), ev: ev, d: data });
+    if (list.length > LOG_MAX) list = list.slice(list.length - LOG_MAX);
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(list)); } catch (e) { /* full: drop it */ }
+    setTimeout(flushLog, 500);
+  }
+  function flushLog() {
+    if (flushing) return;
+    var list = readLog();
+    if (!list.length) return;
+    flushing = true;
+    var x = new XMLHttpRequest();
+    x.open('POST', LOG_URL);
+    x.timeout = 4000;
+    x.onload = function () {
+      flushing = false;
+      if (x.status !== 200) return;
+      var now = readLog();
+      try { localStorage.setItem(LOG_KEY, JSON.stringify(now.slice(list.length))); } catch (e) { /* ignore */ }
+    };
+    x.onerror = x.ontimeout = function () { flushing = false; };
+    x.send(JSON.stringify(list));
+  }
+  setInterval(flushLog, 30000);
+
   // ---------- clock ----------
   var DAYS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   var MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
@@ -148,10 +183,44 @@
     });
   }
 
+  // Samsung's own settings menu, at the end of the dock, because Home now comes back here
+  // instead of opening Samsung's bar. Known ids are tried first, then any app named like it.
+  var SETTINGS_IDS = ['com.samsung.tv.menu', 'org.tizen.setting', 'com.samsung.tv.setting', 'com.samsung.tv.settings'];
+  function findSettings(list) {
+    var byId = {};
+    (list || []).forEach(function (a) { byId[a.id] = a; });
+    for (var i = 0; i < SETTINGS_IDS.length; i++) if (byId[SETTINGS_IDS[i]]) return SETTINGS_IDS[i];
+    var hit = (list || []).filter(function (a) { return /setting|defini/i.test(a.id + ' ' + (a.name || '')); })[0];
+    return hit ? hit.id : null;
+  }
+  function buildSettings(list) {
+    var id = findSettings(list) || (onTV ? null : 'preview.settings');
+    log('settings-app', { id: id });
+    if (!id) return;
+    var sep = document.createElement('div');
+    sep.className = 'sep';
+    $('dock').appendChild(sep);
+    var el = document.createElement('div');
+    el.className = 'ic input';
+    var g = document.createElement('div');
+    g.className = 'gear';
+    el.appendChild(g);
+    addIcon(el, 'Definições', function () { launchApp({ id: id, name: 'Definições' }); });
+  }
+
+  var ownLeaveAt = 0; // when this app last sent itself to the background on purpose
   function launchApp(a) {
+    ownLeaveAt = Date.now();
+    log('launch', { id: a.id });
     try {
-      tz.application.launch(a.id, function () {}, function (e) { toast('Não foi possível abrir ' + a.name + ': ' + e.message); });
-    } catch (e) { toast('Não foi possível abrir ' + a.name + ': ' + e.message); }
+      tz.application.launch(a.id, function () {}, function (e) {
+        log('launch-failed', { id: a.id, err: e.name + ': ' + e.message });
+        toast('Não foi possível abrir ' + a.name + ': ' + e.message);
+      });
+    } catch (e) {
+      log('launch-failed', { id: a.id, err: e.name + ': ' + e.message });
+      toast('Não foi possível abrir ' + a.name + ': ' + e.message);
+    }
   }
 
   // ---------- TV inputs via tvwindow ----------
@@ -216,6 +285,9 @@
     setTimeout(function () { t.classList.remove('on'); }, 4000);
   }
 
+  // every key the app receives, including ones it ignores, so new remote keys can be identified
+  document.addEventListener('keydown', function (e) { log('key', { code: e.keyCode, key: e.key }); }, true);
+
   document.addEventListener('keydown', function (e) {
     var k = e.keyCode;
     if (sourceOn) {
@@ -224,7 +296,7 @@
     }
     var resting = document.body.classList.contains('dim');
     if (k === KEY.BACK || k === KEY.ESC) {
-      if (resting) { try { tz.application.getCurrentApplication().hide(); } catch (err) { /* ignore */ } }
+      if (resting) { ownLeaveAt = Date.now(); try { tz.application.getCurrentApplication().hide(); } catch (err) { /* ignore */ } }
       else rest();
       e.preventDefault();
       return;
@@ -243,7 +315,8 @@
   // Coming back to the app (from another app, or when the wake service relaunches it)
   // starts again from the calm view with the first icon selected.
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden) return;
+    log('visibility', { hidden: document.hidden, ownLeaveMsAgo: Date.now() - ownLeaveAt });
+    if (document.hidden) { maybeTakeBack('hidden'); return; }
     if (sourceOn) closeSource();
     focus = 0;
     paintFocus();
@@ -258,9 +331,10 @@
       tz.application.getAppsInfo(function (list) {
         var m = {};
         list.forEach(function (a) { m[a.id] = true; });
-        cb(m);
-      }, function () { cb(null); });
-    } catch (e) { cb(null); }
+        log('apps', list.map(function (a) { return a.id + ' | ' + a.name + (a.show === false ? ' (hidden)' : ''); }));
+        cb(m, list);
+      }, function () { cb(null, []); });
+    } catch (e) { cb(null, []); }
   }
 
   // Scale the 1920x1080 stage to whatever size the page really is (cover, centred).
@@ -291,24 +365,86 @@
   var lastTick = Date.now();
   setInterval(function () {
     var now = Date.now();
-    if (onTV && now - lastTick > WAKE_GAP_MS) {
-      setTimeout(function () {
-        try {
-          var me = tz.application.getCurrentApplication().appInfo.id;
-          tz.application.launch(me, function () {}, function () {});
-        } catch (e) { /* ignore */ }
-      }, 3000);
-    }
+    var gap = now - lastTick;
+    if (gap > 20000) log('timer-gap', { s: Math.round(gap / 1000), hidden: document.hidden });
+    if (onTV && gap > WAKE_GAP_MS) setTimeout(function () { bringToFront('wake'); }, 3000);
     lastTick = now;
   }, 5000);
+
+  function bringToFront(reason) {
+    if (!onTV) return;
+    try {
+      var me = tz.application.getCurrentApplication().appInfo.id;
+      tz.application.launch(me, function () { log('front-ok', { why: reason }); },
+        function (e) { log('front-failed', { why: reason, err: e.name + ': ' + e.message }); });
+    } catch (e) { log('front-failed', { why: reason, err: e.name + ': ' + e.message }); }
+  }
+
+  // ---------- Home button comes back here ----------
+  // Apps cannot take the Home key itself on a Samsung TV. What the dashboard sees instead is
+  // that it loses the front (the app is hidden, or Samsung's bar takes focus over it) without
+  // having asked to. Unless another app started in that moment (a cast from a phone, say),
+  // the dashboard puts itself back in front, which closes Samsung's bar.
+  var HOME_TAKEOVER = true;
+  var TAKE_BACK_MS = 1200;
+  function runningIds(cb) {
+    try {
+      tz.application.getAppsContext(function (list) { cb(list.map(function (c) { return c.appId; })); }, function () { cb([]); });
+    } catch (e) { cb([]); }
+  }
+  function maybeTakeBack(why) {
+    if (!HOME_TAKEOVER || !onTV || sourceOn) return;
+    if (Date.now() - ownLeaveAt < 5000) return; // we opened an app or hid ourselves on purpose
+    runningIds(function (before) {
+      setTimeout(function () {
+        runningIds(function (after) {
+          var fresh = after.filter(function (id) { return before.indexOf(id) < 0; });
+          var stillAway = document.hidden || !document.hasFocus();
+          log('takeback-check', { why: why, fresh: fresh, stillAway: stillAway, running: after });
+          if (stillAway && !fresh.length && Date.now() - ownLeaveAt > 5000) bringToFront('takeback-' + why);
+        });
+      }, TAKE_BACK_MS);
+    });
+  }
+  window.addEventListener('blur', function () {
+    log('blur', { hidden: document.hidden });
+    if (!document.hidden) maybeTakeBack('blur');
+  });
+  window.addEventListener('focus', function () { log('focus', {}); });
+
+  // ---------- what this TV allows (logged once per start) ----------
+  if (onTV) {
+    log('start', { hidden: document.hidden, w: window.innerWidth, h: window.innerHeight });
+    try {
+      var keys = tz.tvinputdevice.getSupportedKeys();
+      log('supported-keys', keys.map(function (k) { return k.name + '=' + k.code; }));
+      keys.forEach(function (k) {
+        if (/home|exit|menu|smarthub|source|tools/i.test(k.name)) {
+          try { tz.tvinputdevice.registerKey(k.name); log('registered-key', k.name + '=' + k.code); } catch (e) { log('register-failed', k.name + ': ' + e.message); }
+        }
+      });
+    } catch (e) { log('keys-error', e.message); }
+    log('apis', {
+      statusListener: typeof tz.application.addAppStatusChangeListener,
+      appsContext: typeof tz.application.getAppsContext,
+      power: typeof (tz.power && tz.power.setScreenStateChangeListener)
+    });
+    try {
+      tz.application.addAppStatusChangeListener(function (id, active) { log('app-status', { id: id, active: active }); });
+    } catch (e) { log('status-listener-error', e.message); }
+    try {
+      tz.power.setScreenStateChangeListener(function (prev, next) { log('screen', { from: prev, to: next }); });
+    } catch (e) { log('screen-listener-error', e.message); }
+  }
 
   // tells shell.js this UI version started cleanly
   window.__dashOk = true;
 
-  installedMap(function (m) {
+  installedMap(function (m, apps) {
     buildApps(m);
     loadSources(function (list) {
       buildInputs(list);
+      buildSettings(apps);
       paintFocus();
       var q = /focus=(\d+)/.exec(location.search);
       if (!onTV && q) { focus = Number(q[1]); paintFocus(); wake(); } else rest();

@@ -133,6 +133,21 @@ body.dim .ic.focus { transform: none; margin: 0 10px; }
   border-left: 36px solid #fff;
 }
 
+/* settings gear: dotted ring for the teeth around a solid ring */
+.gear {
+  position: relative;
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  border: 8px dotted #fff;
+}
+.gear:after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px; right: 2px; bottom: 2px;
+  border-radius: 50%;
+  border: 9px solid #fff;
+}
+
 .sep {
   flex: 0 0 auto;
   width: 2px;
