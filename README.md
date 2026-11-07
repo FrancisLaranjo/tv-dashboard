@@ -1,6 +1,6 @@
-# tv-dashboard
+﻿# tv-dashboard
 
-An ambient home screen for a 2018 Samsung TV (Tizen 4): rotating landscape photos, a clock, local weather, app tiles and TV input tiles.
+An ambient home screen for a 2018 Samsung TV (Tizen 4): rotating landscape photos, a clock, weather for Figueira da Foz, in European Portuguese, app tiles and TV input tiles.
 
 ## How it updates
 

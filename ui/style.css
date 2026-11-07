@@ -168,7 +168,8 @@ body.panel-open #panel { transform: translateY(0); visibility: visible; transiti
 }
 .tile.focus.has-icon .label { opacity: 1; }
 
-.tile.input { background: rgba(255,255,255,0.12); width: 220px; }
+.tile.input { background: rgba(255,255,255,0.12); width: 270px; }
+.tile.input .label { white-space: nowrap; }
 .tile.input .label { font-size: 34px; font-weight: 500; }
 .tile.input .sub {
   position: absolute;

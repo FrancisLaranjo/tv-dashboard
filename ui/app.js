@@ -30,7 +30,8 @@
   var PHOTO_MS = 60 * 1000;
   var WEATHER_MS = 30 * 60 * 1000;
   var PANEL_IDLE_MS = 25 * 1000;
-  var LAT = 38.7223, LON = -9.1393; // Lisbon
+  var LAT = 40.1508, LON = -8.8618; // Figueira da Foz
+  var PLACE = 'Figueira da Foz';
 
   var KEY = { LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40, ENTER: 13, BACK: 10009, ESC: 27, BACKSPACE: 8 };
 
@@ -39,27 +40,27 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // ---------- clock ----------
-  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var DAYS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  var MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function tickClock() {
     var d = new Date();
     $('time').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
-    $('date').textContent = DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
+    $('date').textContent = DAYS[d.getDay()] + ', ' + d.getDate() + ' de ' + MONTHS[d.getMonth()];
   }
 
   // ---------- weather (Open-Meteo, no key) ----------
   function weatherText(code) {
-    if (code === 0) return 'Clear';
-    if (code <= 2) return 'Partly cloudy';
-    if (code === 3) return 'Overcast';
-    if (code <= 48) return 'Fog';
-    if (code <= 57) return 'Drizzle';
-    if (code <= 67) return 'Rain';
-    if (code <= 77) return 'Snow';
-    if (code <= 82) return 'Showers';
-    if (code <= 86) return 'Snow showers';
-    return 'Thunderstorm';
+    if (code === 0) return 'Céu limpo';
+    if (code <= 2) return 'Pouco nublado';
+    if (code === 3) return 'Céu encoberto';
+    if (code <= 48) return 'Nevoeiro';
+    if (code <= 57) return 'Chuvisco';
+    if (code <= 67) return 'Chuva';
+    if (code <= 77) return 'Neve';
+    if (code <= 82) return 'Aguaceiros';
+    if (code <= 86) return 'Aguaceiros de neve';
+    return 'Trovoada';
   }
   function loadWeather() {
     var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + LAT + '&longitude=' + LON +
@@ -68,8 +69,8 @@
       var now = Math.round(j.current.temperature_2m);
       var hi = Math.round(j.daily.temperature_2m_max[0]);
       var lo = Math.round(j.daily.temperature_2m_min[0]);
-      $('weather').innerHTML = '<span class="temp">' + now + '°</span>Lisbon · ' + weatherText(j.current.weather_code) +
-        '<span class="range">H ' + hi + '°  L ' + lo + '°</span>';
+      $('weather').innerHTML = '<span class="temp">' + now + '°</span>' + PLACE + ' · ' + weatherText(j.current.weather_code) +
+        '<span class="range">Máx. ' + hi + '°  Mín. ' + lo + '°</span>';
     }).catch(function () { /* keep the last reading */ });
   }
 
@@ -96,7 +97,7 @@
       back.classList.add('on');
       layers[front].classList.remove('on');
       front = 1 - front;
-      $('credit').textContent = 'Photo: ' + p[1] + ' / Unsplash  ·  ' + String(window.__dashVersion || 'dev').slice(0, 7);
+      $('credit').textContent = 'Fotografia: ' + p[1] + ' / Unsplash  ·  ' + String(window.__dashVersion || 'dev').slice(0, 7);
     };
     img.onerror = function () { setTimeout(nextPhoto, 15000); };
     img.src = url;
@@ -132,7 +133,7 @@
   function buildInputs(sources) {
     var host = $('inputs');
     sources.forEach(function (s) {
-      var label = s.type === 'TV' ? 'Live TV' : s.type + (s.number ? ' ' + s.number : '');
+      var label = s.type === 'TV' ? 'TV em direto' : s.type + (s.number ? ' ' + s.number : '');
       var el = makeTile(label, 'input');
       if (s.name && s.name !== label) {
         var sub = document.createElement('div');
@@ -150,24 +151,24 @@
   function launchApp(a) {
     hidePanel();
     try {
-      tz.application.launch(a.id, function () {}, function (e) { toast('Could not open ' + a.name + ': ' + e.message); });
-    } catch (e) { toast('Could not open ' + a.name + ': ' + e.message); }
+      tz.application.launch(a.id, function () {}, function (e) { toast('Não foi possível abrir ' + a.name + ': ' + e.message); });
+    } catch (e) { toast('Não foi possível abrir ' + a.name + ': ' + e.message); }
   }
 
   // ---------- TV inputs via tvwindow ----------
   var sourceOn = false;
   function showSource(s) {
-    if (!tz.tvwindow) { toast('Input switching is not available on this TV'); return; }
+    if (!tz.tvwindow) { toast('Esta TV não permite mudar de fonte a partir desta aplicação'); return; }
     try {
       tz.tvwindow.setSource({ type: s.type, number: s.number }, function () {
         tz.tvwindow.show(function () {
           sourceOn = true;
           document.body.classList.add('source-on');
           hidePanel();
-        }, function (e) { toast('Could not show ' + s.type + ': ' + e.message); },
+        }, function (e) { toast('Não foi possível mostrar ' + s.type + ': ' + e.message); },
         ['0px', '0px', '1920px', '1080px'], 'MAIN');
-      }, function (e) { toast('Could not switch to ' + s.type + ': ' + e.message); });
-    } catch (e) { toast('Input switching failed: ' + e.message); }
+      }, function (e) { toast('Não foi possível mudar para ' + s.type + ': ' + e.message); });
+    } catch (e) { toast('Falha ao mudar de fonte: ' + e.message); }
   }
   function closeSource() {
     try { tz.tvwindow.hide(function () {}, function () {}, 'MAIN'); } catch (e) { /* ignore */ }
