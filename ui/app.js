@@ -185,7 +185,8 @@
 
   // Samsung's own settings menu, at the end of the dock, because Home now comes back here
   // instead of opening Samsung's bar. Known ids are tried first, then any app named like it.
-  var SETTINGS_IDS = ['com.samsung.tv.menu', 'org.tizen.setting', 'com.samsung.tv.setting', 'com.samsung.tv.settings'];
+  // org.tizen.menu is the settings menu on this 2018 TV (seen in its app list, 2026-11-07).
+  var SETTINGS_IDS = ['org.tizen.menu', 'org.tizen.setting', 'com.samsung.tv.setting'];
   function findSettings(list) {
     var byId = {};
     (list || []).forEach(function (a) { byId[a.id] = a; });
@@ -417,12 +418,8 @@
     log('start', { hidden: document.hidden, w: window.innerWidth, h: window.innerHeight });
     try {
       var keys = tz.tvinputdevice.getSupportedKeys();
+      // Home is not in this list on this TV, so it cannot be registered (measured 2026-11-07).
       log('supported-keys', keys.map(function (k) { return k.name + '=' + k.code; }));
-      keys.forEach(function (k) {
-        if (/home|exit|menu|smarthub|source|tools/i.test(k.name)) {
-          try { tz.tvinputdevice.registerKey(k.name); log('registered-key', k.name + '=' + k.code); } catch (e) { log('register-failed', k.name + ': ' + e.message); }
-        }
-      });
     } catch (e) { log('keys-error', e.message); }
     log('apis', {
       statusListener: typeof tz.application.addAppStatusChangeListener,
