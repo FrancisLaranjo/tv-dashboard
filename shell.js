@@ -79,7 +79,8 @@
   // ---------- updates ----------
   var pendingReload = false;
   function idle() {
-    return !/panel-open|source-on/.test(document.body.className);
+    // panel-open belonged to the first layout; dock-active is the dock look being used
+    return !/panel-open|source-on|dock-active/.test(document.body.className);
   }
   function reloadWhenIdle() {
     pendingReload = true;

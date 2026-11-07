@@ -5,16 +5,17 @@
   'use strict';
 
   // Apps in the order they appear, most used first. Only installed ones are shown.
+  // mark: what the dock icon shows ('play' draws YouTube's triangle with CSS).
   var APPS = [
-    { id: 'xvvl3S1bvH.TizenBrewStandalone', name: 'YouTube', bg: '#FF0000', fg: '#fff' },
-    { id: 'RN1MCdNq8t.Netflix', name: 'NETFLIX', bg: '#000000', fg: '#E50914' },
-    { id: 'cj37Ni3qXM.HBONow', name: 'HBO Max', bg: '#002BE7', fg: '#fff' },
-    { id: 'evKhCgZelL.AmazonIgnitionLauncher2', name: 'prime video', bg: '#00A8E1', fg: '#fff' },
-    { id: 'MCmYXNxgcu.DisneyPlus', name: 'Disney+', bg: '#0E1B4D', fg: '#fff' },
-    { id: 'com.samsung.tv.aria-video', name: 'Apple TV', bg: '#1C1C1E', fg: '#fff' },
-    { id: 'rJeHak5zRg.Spotify', name: 'Spotify', bg: '#1DB954', fg: '#000' },
-    { id: 'pNutxbX589.RTPPlay', name: 'RTP Play', bg: '#0B2A4A', fg: '#fff' },
-    { id: 'org.tizen.browser', name: 'Internet', bg: '#2A3140', fg: '#fff' }
+    { id: 'xvvl3S1bvH.TizenBrewStandalone', name: 'YouTube', mark: 'play', bg: '#FF0000', fg: '#fff' },
+    { id: 'RN1MCdNq8t.Netflix', name: 'Netflix', mark: 'N', size: 58, bg: '#000000', fg: '#E50914' },
+    { id: 'cj37Ni3qXM.HBONow', name: 'HBO Max', mark: 'max', size: 30, bg: '#002BE7', fg: '#fff' },
+    { id: 'evKhCgZelL.AmazonIgnitionLauncher2', name: 'Prime Video', mark: 'prime', size: 24, bg: '#00A8E1', fg: '#fff' },
+    { id: 'MCmYXNxgcu.DisneyPlus', name: 'Disney+', mark: 'D+', size: 34, bg: '#0E1B4D', fg: '#fff' },
+    { id: 'com.samsung.tv.aria-video', name: 'Apple TV', mark: 'tv', size: 34, bg: '#1C1C1E', fg: '#fff' },
+    { id: 'rJeHak5zRg.Spotify', name: 'Spotify', mark: 'Spotify', size: 20, bg: '#1DB954', fg: '#000' },
+    { id: 'pNutxbX589.RTPPlay', name: 'RTP Play', mark: 'RTP', size: 28, bg: '#0B2A4A', fg: '#fff' },
+    { id: 'org.tizen.browser', name: 'Internet', mark: 'www', size: 26, bg: '#2A3140', fg: '#fff' }
   ];
 
   // Free landscape photos (Unsplash licence, served by picsum.photos).
@@ -29,7 +30,7 @@
   ];
   var PHOTO_MS = 60 * 1000;
   var WEATHER_MS = 30 * 60 * 1000;
-  var PANEL_IDLE_MS = 25 * 1000;
+  var DIM_MS = 30 * 1000; // dock fades back after this long without a key press
   var LAT = 40.1508, LON = -8.8618; // Figueira da Foz
   var PLACE = 'Figueira da Foz';
 
@@ -103,53 +104,51 @@
     img.src = url;
   }
 
-  // ---------- tiles ----------
-  var rows = [[], []]; // [apps, inputs]
-  var focus = { row: 0, col: 0 };
+  // ---------- dock ----------
+  var items = []; // { el, name, act }
+  var focus = 0;
 
-  function makeTile(label, cls) {
-    var el = document.createElement('div');
-    el.className = 'tile' + (cls ? ' ' + cls : '');
-    var span = document.createElement('div');
-    span.className = 'label';
-    span.textContent = label;
-    el.appendChild(span);
-    return el;
+  function addIcon(el, name, act) {
+    el.onclick = act;
+    $('dock').appendChild(el);
+    items.push({ el: el, name: name, act: act });
   }
 
   function buildApps(installed) {
-    var host = $('apps');
     APPS.forEach(function (a) {
       if (installed && !installed[a.id]) return;
-      var el = makeTile(a.name);
+      var el = document.createElement('div');
+      el.className = 'ic';
       el.style.background = a.bg;
       el.style.color = a.fg;
-      el.onclick = function () { launchApp(a); };
-      host.appendChild(el);
-      rows[0].push({ el: el, act: function () { launchApp(a); } });
+      if (a.mark === 'play') {
+        var tri = document.createElement('div');
+        tri.className = 'play';
+        el.appendChild(tri);
+      } else {
+        el.textContent = a.mark;
+        if (a.size) el.style.fontSize = a.size + 'px';
+      }
+      addIcon(el, a.name, function () { launchApp(a); });
     });
   }
 
   function buildInputs(sources) {
-    var host = $('inputs');
+    if (!sources.length) return;
+    var sep = document.createElement('div');
+    sep.className = 'sep';
+    $('dock').appendChild(sep);
     sources.forEach(function (s) {
-      var label = s.type === 'TV' ? 'TV em direto' : s.type + (s.number ? ' ' + s.number : '');
-      var el = makeTile(label, 'input');
-      if (s.name && s.name !== label) {
-        var sub = document.createElement('div');
-        sub.className = 'sub';
-        sub.textContent = s.name;
-        el.appendChild(sub);
-      }
-      el.onclick = function () { showSource(s); };
-      host.appendChild(el);
-      rows[1].push({ el: el, act: function () { showSource(s); } });
+      var tv = s.type === 'TV';
+      var name = tv ? 'TV em direto' : s.type + (s.number ? ' ' + s.number : '');
+      var el = document.createElement('div');
+      el.className = 'ic input';
+      el.innerHTML = tv ? 'TV' : s.type + '<br>' + (s.number || '');
+      addIcon(el, s.name && !tv ? name + ' · ' + s.name : name, function () { showSource(s); });
     });
-    if (!rows[1].length) { $('inputs-label').style.display = 'none'; $('inputs').style.display = 'none'; }
   }
 
   function launchApp(a) {
-    hidePanel();
     try {
       tz.application.launch(a.id, function () {}, function (e) { toast('Não foi possível abrir ' + a.name + ': ' + e.message); });
     } catch (e) { toast('Não foi possível abrir ' + a.name + ': ' + e.message); }
@@ -164,7 +163,6 @@
         tz.tvwindow.show(function () {
           sourceOn = true;
           document.body.classList.add('source-on');
-          hidePanel();
         }, function (e) { toast('Não foi possível mostrar ' + s.type + ': ' + e.message); },
         ['0px', '0px', '1920px', '1080px'], 'MAIN');
       }, function (e) { toast('Não foi possível mudar para ' + s.type + ': ' + e.message); });
@@ -186,41 +184,29 @@
     } catch (e) { cb(tz.tvwindow ? [{ type: 'TV', number: 1 }] : []); }
   }
 
-  // ---------- panel + focus ----------
-  var idleTimer = null;
-  function panelOpen() { return document.body.classList.contains('panel-open'); }
-  function showPanel() {
-    document.body.classList.add('panel-open');
-    paintFocus();
-    bumpIdle();
-  }
-  function hidePanel() {
-    document.body.classList.remove('panel-open');
-    clearTimeout(idleTimer);
-  }
-  function bumpIdle() {
-    clearTimeout(idleTimer);
-    idleTimer = setTimeout(hidePanel, PANEL_IDLE_MS);
-  }
+  // ---------- focus, name label, dimming ----------
+  var dimTimer = null;
   function paintFocus() {
-    rows.forEach(function (r) { r.forEach(function (t) { t.el.classList.remove('focus'); }); });
-    var r = rows[focus.row];
-    if (!r || !r.length) { focus.row = 0; r = rows[0]; }
-    if (!r.length) return;
-    if (focus.col >= r.length) focus.col = r.length - 1;
-    var el = r[focus.col].el;
-    el.classList.add('focus');
-    // scroll the row so the focused tile stays on screen (panel content is 1680px wide)
-    var visible = 1920 - 2 * 120;
-    var shift = Math.max(0, el.offsetLeft - 120 + el.offsetWidth + 60 - visible);
-    el.parentNode.style.transform = 'translateX(' + (-shift) + 'px)';
+    if (!items.length) return;
+    focus = Math.max(0, Math.min(items.length - 1, focus));
+    items.forEach(function (it, i) { it.el.classList.toggle('focus', i === focus); });
+    var it = items[focus], dock = $('dock'), tip = $('tip');
+    tip.textContent = it.name;
+    // the dock is centred with translateX(-50%), so its offsetLeft is its centre line
+    setTimeout(function () {
+      tip.style.left = (dock.offsetLeft - dock.offsetWidth / 2 + it.el.offsetLeft + it.el.offsetWidth / 2) + 'px';
+    }, 200);
   }
-  function move(dRow, dCol) {
-    var row = focus.row + dRow;
-    if (row < 0 || row >= rows.length || !rows[row].length) row = focus.row;
-    focus.row = row;
-    focus.col = Math.max(0, Math.min(rows[row].length - 1, focus.col + dCol));
-    paintFocus();
+  function wake() {
+    document.body.classList.remove('dim');
+    document.body.classList.add('dock-active');
+    clearTimeout(dimTimer);
+    dimTimer = setTimeout(rest, DIM_MS);
+  }
+  function rest() {
+    clearTimeout(dimTimer);
+    document.body.classList.add('dim');
+    document.body.classList.remove('dock-active');
   }
 
   function toast(msg) {
@@ -236,34 +222,32 @@
       if (k === KEY.BACK || k === KEY.ESC || k === KEY.BACKSPACE) { closeSource(); e.preventDefault(); }
       return;
     }
-    if (!panelOpen()) {
-      if (k === KEY.BACK || k === KEY.ESC) {
-        try { tz.application.getCurrentApplication().hide(); } catch (err) { /* ignore */ }
-      } else {
-        showPanel();
-      }
+    var resting = document.body.classList.contains('dim');
+    if (k === KEY.BACK || k === KEY.ESC) {
+      if (resting) { try { tz.application.getCurrentApplication().hide(); } catch (err) { /* ignore */ } }
+      else rest();
       e.preventDefault();
       return;
     }
-    bumpIdle();
+    wake();
+    if (resting) { paintFocus(); e.preventDefault(); return; } // the first press only wakes the dock
     switch (k) {
-      case KEY.LEFT: move(0, -1); break;
-      case KEY.RIGHT: move(0, 1); break;
-      case KEY.UP: if (focus.row === 0) hidePanel(); else move(-1, 0); break;
-      case KEY.DOWN: move(1, 0); break;
-      case KEY.ENTER: { var t = rows[focus.row][focus.col]; if (t) t.act(); break; }
-      case KEY.BACK: case KEY.ESC: case KEY.BACKSPACE: hidePanel(); break;
+      case KEY.LEFT: focus--; paintFocus(); break;
+      case KEY.RIGHT: focus++; paintFocus(); break;
+      case KEY.ENTER: if (items[focus]) items[focus].act(); break;
       default: return;
     }
     e.preventDefault();
   });
 
   // Coming back to the app (from another app, or when the wake service relaunches it)
-  // starts again from the calm ambient view.
+  // starts again from the calm view with the first icon selected.
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) return;
     if (sourceOn) closeSource();
-    hidePanel();
+    focus = 0;
+    paintFocus();
+    rest();
     tickClock();
     loadWeather();
   });
@@ -304,8 +288,8 @@
     loadSources(function (list) {
       buildInputs(list);
       paintFocus();
-      var m = /panel=?(\d*)/.exec(location.search);
-      if (!onTV && m) { focus.col = Number(m[1] || 1); showPanel(); }
+      var q = /focus=(\d+)/.exec(location.search);
+      if (!onTV && q) { focus = Number(q[1]); paintFocus(); wake(); } else rest();
     });
   });
 

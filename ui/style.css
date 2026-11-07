@@ -1,10 +1,9 @@
-/* Targets the Tizen 4 web engine (Chromium 56): flexbox with margins, no CSS grid, no flex gap. */
+/* "Dock" look: centred clock over the photo, a row of app and input icons at the bottom.
+   Targets the Tizen 4 web engine (Chromium 56): flexbox with margins, no CSS grid, no flex gap. */
 :root {
   --ink: #ffffff;
-  --ink-soft: rgba(255, 255, 255, 0.78);
-  --ink-faint: rgba(255, 255, 255, 0.5);
-  --panel: rgba(10, 12, 16, 0.72);
-  --focus: #ffffff;
+  --ink-soft: rgba(255, 255, 255, 0.85);
+  --ink-faint: rgba(255, 255, 255, 0.55);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,9 +18,8 @@ html, body {
   font-family: "SamsungOneUI", "Samsung Sans", "Roboto", "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Everything is laid out on a fixed 1920x1080 stage that app.js scales to the real page size.
-   The TV's web page is not 1920x1080 (measured from a photo: about 2780 wide), so fixed
-   pixel sizes alone left the picture in the top-left corner. */
+/* Laid out on a fixed 1920x1080 stage that app.js scales to the real page size
+   (the TV's page is about 2780 px wide). */
 #stage {
   position: absolute;
   top: 0; left: 0;
@@ -38,8 +36,8 @@ html, body {
   height: 1080px;
   background: #0b0d12 center / cover no-repeat;
   opacity: 0;
-  transition: opacity 3s ease, transform 70s linear;
   transform: scale(1);
+  transition: opacity 3s ease, transform 70s linear;
 }
 .bg.on { opacity: 1; transform: scale(1.08); }
 
@@ -48,136 +46,121 @@ html, body {
   top: 0; left: 0;
   width: 1920px;
   height: 1080px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.7) 100%),
-              linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 60%);
+  background: radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.65) 100%);
 }
 
-#ambient {
+#center {
   position: absolute;
-  left: 120px;
-  bottom: 140px;
-  text-shadow: 0 2px 24px rgba(0,0,0,0.45);
-  transition: transform 0.5s ease, opacity 0.5s ease;
+  top: 230px;
+  left: 0;
+  width: 1920px;
+  text-align: center;
+  text-shadow: 0 4px 30px rgba(0,0,0,0.5);
 }
 #time {
-  font-size: 220px;
-  font-weight: 200;
+  font-size: 260px;
+  font-weight: 100;
   line-height: 1;
-  letter-spacing: -4px;
+  letter-spacing: -6px;
 }
 #date {
-  margin-top: 12px;
-  font-size: 48px;
+  margin-top: 6px;
+  font-size: 46px;
   font-weight: 300;
   color: var(--ink-soft);
 }
 #weather {
-  margin-top: 28px;
-  font-size: 40px;
+  margin-top: 16px;
+  font-size: 36px;
   font-weight: 300;
   color: var(--ink-soft);
 }
-#weather .temp { color: var(--ink); font-weight: 400; margin-right: 18px; }
-#weather .range { color: var(--ink-faint); margin-left: 18px; }
+#weather .temp { color: var(--ink); font-weight: 400; margin-right: 14px; }
+#weather .range { color: var(--ink-faint); margin-left: 14px; }
 
-#ambient { transform-origin: left bottom; }
-body.panel-open #ambient { transform: translateY(-500px) scale(0.55); }
-
-#hint {
+/* ---------- dock ---------- */
+#dock {
   position: absolute;
-  right: 120px;
   bottom: 70px;
-  font-size: 26px;
-  color: var(--ink-faint);
-  transition: opacity 0.5s ease;
-}
-body.panel-open #hint { opacity: 0; }
-
-#credit {
-  position: absolute;
-  right: 120px;
-  bottom: 40px;
-  font-size: 18px;
-  color: rgba(255,255,255,0.35);
-}
-body.panel-open #credit { opacity: 0; }
-
-#panel {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 1920px;
-  padding: 44px 120px 70px;
-  background: linear-gradient(180deg, rgba(10,12,16,0) 0%, var(--panel) 18%, rgba(8,9,12,0.92) 100%);
-  transform: translateY(100%);
-  visibility: hidden;
-  transition: transform 0.45s cubic-bezier(.2,.8,.2,1), visibility 0s linear 0.45s;
-}
-body.panel-open #panel { transform: translateY(0); visibility: visible; transition-delay: 0s; }
-
-.row-label {
-  font-size: 26px;
-  font-weight: 400;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  margin: 18px 0 16px 4px;
-}
-.row {
+  left: 50%;
   display: flex;
-  flex-wrap: nowrap;
-  height: 196px;
-  align-items: center;
-  transition: transform 0.3s ease;
+  align-items: flex-end;
+  padding: 18px 22px;
+  border-radius: 34px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.2);
+  transform: translateX(-50%);
+  transition: opacity 0.6s ease;
 }
+body.dim #dock { opacity: 0.35; }
 
-.tile {
+.ic {
   position: relative;
   flex: 0 0 auto;
-  width: 280px;
-  height: 160px;
-  margin-right: 28px;
-  border-radius: 18px;
+  width: 104px;
+  height: 104px;
+  margin: 0 10px;
+  border-radius: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-.tile img { max-width: 62%; max-height: 62%; }
-.tile .label {
-  font-size: 38px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
   text-align: center;
-  padding: 0 16px;
-}
-.tile.has-icon .label {
-  position: absolute;
-  bottom: 10px;
-  left: 0; right: 0;
   font-size: 20px;
-  font-weight: 400;
-  opacity: 0;
+  font-weight: 700;
+  line-height: 1.1;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  transition: transform 0.18s ease, margin 0.18s ease;
 }
-.tile.focus {
-  transform: scale(1.12);
-  box-shadow: 0 0 0 5px var(--focus), 0 18px 40px rgba(0,0,0,0.55);
+.ic.input {
+  background: rgba(0,0,0,0.45);
+  font-size: 22px;
+  font-weight: 500;
+}
+.ic.focus {
+  transform: translateY(-22px) scale(1.35);
+  margin: 0 30px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   z-index: 2;
 }
-.tile.focus.has-icon .label { opacity: 1; }
+body.dim .ic.focus { transform: none; margin: 0 10px; }
 
-.tile.input { background: rgba(255,255,255,0.12); width: 270px; }
-.tile.input .label { white-space: nowrap; }
-.tile.input .label { font-size: 34px; font-weight: 500; }
-.tile.input .sub {
+/* YouTube's play mark, drawn with borders so it needs no font glyph */
+.play {
+  width: 0; height: 0;
+  margin-left: 8px;
+  border-top: 22px solid transparent;
+  border-bottom: 22px solid transparent;
+  border-left: 36px solid #fff;
+}
+
+.sep {
+  flex: 0 0 auto;
+  width: 2px;
+  height: 90px;
+  margin: 0 14px 7px;
+  background: rgba(255,255,255,0.3);
+}
+
+#tip {
   position: absolute;
-  bottom: 14px;
-  left: 0; right: 0;
-  text-align: center;
-  font-size: 20px;
-  color: var(--ink-faint);
+  bottom: 236px;
+  left: 0;
+  padding: 8px 22px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.6);
+  font-size: 30px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  transition: opacity 0.3s ease;
+}
+body.dim #tip { opacity: 0; }
+
+#credit {
+  position: absolute;
+  right: 60px;
+  bottom: 24px;
+  font-size: 18px;
+  color: rgba(255,255,255,0.4);
 }
 
 #toast {
@@ -196,7 +179,7 @@ body.panel-open #panel { transform: translateY(0); visibility: visible; transiti
 }
 #toast.on { opacity: 1; }
 
-/* While an HDMI or TV source is showing through tvwindow, everything else steps aside. */
-body.source-on .bg, body.source-on .shade, body.source-on #ambient,
-body.source-on #panel, body.source-on #hint, body.source-on #credit { visibility: hidden; }
+/* While an HDMI or TV source shows through tvwindow, everything else steps aside. */
+body.source-on .bg, body.source-on .shade, body.source-on #center, body.source-on #dock,
+body.source-on #tip, body.source-on #credit { visibility: hidden; }
 body.source-on { background: transparent; }
