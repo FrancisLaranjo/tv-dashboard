@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<!--
+  PROTOTYPE, throwaway. Lives only on branch prototype/looks; never merge to main.
+  Question: what should the TV dashboard look like?
+  Four structurally different layouts of the same content (photo, clock, Figueira da Foz
+  weather, app tiles, input tiles), switchable via ?variant=A|B|C|D and the floating bar.
+  On the PC: arrows/Enter/Esc act as the TV remote; [ and ] (or the bar) switch variant.
+-->
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<title>Protótipos do Início</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #000; color: #fff;
+    font-family: "SamsungOneUI", "Samsung Sans", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  #stage { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; }
+  .photo { position: absolute; background: #111 center / cover no-repeat; }
+
+  /* ---------- prototype switcher (not part of any design) ---------- */
+  #proto-bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 99;
+    display: flex; align-items: center; background: #ffeb3b; color: #111; border-radius: 999px;
+    font: 600 15px/1 system-ui, sans-serif; box-shadow: 0 4px 18px rgba(0,0,0,.5); }
+  #proto-bar button { border: 0; background: none; font: inherit; font-size: 20px; padding: 10px 18px; cursor: pointer; color: #111; }
+  #proto-bar span { padding: 0 6px; min-width: 260px; text-align: center; }
+
+  /* ---------- shared tile look ---------- */
+  .brand { display: flex; align-items: center; justify-content: center; font-weight: 700; text-align: center; }
+
+  /* ========== A: Atual (photo full screen, clock bottom-left, panel slides up) ========== */
+  .vA .photo { top: 0; left: 0; width: 1920px; height: 1080px; }
+  .vA .shade { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px;
+    background: linear-gradient(180deg, rgba(0,0,0,.05), rgba(0,0,0,.15) 45%, rgba(0,0,0,.7)), linear-gradient(90deg, rgba(0,0,0,.45), rgba(0,0,0,0) 60%); }
+  .vA .amb { position: absolute; left: 120px; bottom: 140px; transform-origin: left bottom; transition: transform .5s; }
+  .vA.open .amb { transform: translateY(-500px) scale(.55); }
+  .vA .time { font-size: 220px; font-weight: 200; line-height: 1; letter-spacing: -4px; }
+  .vA .date { font-size: 48px; font-weight: 300; opacity: .8; margin-top: 12px; }
+  .vA .wx { font-size: 40px; font-weight: 300; opacity: .8; margin-top: 24px; }
+  .vA .panel { position: absolute; left: 0; bottom: 0; width: 1920px; padding: 44px 120px 70px;
+    background: linear-gradient(180deg, rgba(10,12,16,0), rgba(10,12,16,.75) 18%, rgba(8,9,12,.92));
+    transform: translateY(100%); transition: transform .45s; }
+  .vA.open .panel { transform: none; }
+  .vA .lbl { font-size: 26px; letter-spacing: 2px; text-transform: uppercase; opacity: .5; margin: 18px 0 16px 4px; }
+  .vA .row { display: flex; height: 196px; align-items: center; }
+  .vA .tile { flex: 0 0 auto; width: 280px; height: 160px; margin-right: 28px; border-radius: 18px; font-size: 38px; transition: transform .18s; }
+  .vA .tile.in { width: 270px; background: rgba(255,255,255,.12); font-weight: 500; font-size: 34px; }
+  .vA .f { transform: scale(1.12); box-shadow: 0 0 0 5px #fff; }
+
+  /* ========== B: Coluna lateral (glass sidebar always visible, vertical list) ========== */
+  .vB .photo { top: 0; left: 0; width: 1920px; height: 1080px; }
+  .vB .side { position: absolute; top: 0; left: 0; width: 620px; height: 1080px; padding: 56px 64px;
+    background: rgba(12,14,20,.78); border-right: 1px solid rgba(255,255,255,.08); }
+  .vB .time { font-size: 130px; font-weight: 200; line-height: 1; }
+  .vB .date { font-size: 34px; opacity: .7; margin-top: 10px; }
+  .vB .wx { font-size: 30px; opacity: .7; margin-top: 18px; padding-bottom: 36px; border-bottom: 1px solid rgba(255,255,255,.12); }
+  .vB .lbl { font-size: 20px; letter-spacing: 2px; text-transform: uppercase; opacity: .45; margin: 24px 0 8px; }
+  .vB .dot { box-shadow: 0 0 0 2px rgba(255,255,255,.35); }
+  .vB .item { display: flex; align-items: center; height: 50px; padding: 0 16px; margin: 0 -16px; border-radius: 12px; font-size: 32px; }
+  .vB .dot { width: 18px; height: 18px; border-radius: 50%; margin-right: 22px; }
+  .vB .item.f { background: #fff; color: #111; }
+  .vB .ins { display: flex; flex-wrap: wrap; }
+  .vB .chip { height: 56px; padding: 0 22px; margin: 0 14px 14px 0; border-radius: 28px; border: 2px solid rgba(255,255,255,.3);
+    font-size: 26px; display: flex; align-items: center; }
+  .vB .chip.f { background: #fff; color: #111; border-color: #fff; }
+  .vB .credit { position: absolute; right: 50px; bottom: 36px; font-size: 18px; opacity: .55; text-shadow: 0 1px 8px #000; }
+
+  /* ========== C: Dock (centred clock, small icon dock always visible at the bottom) ========== */
+  .vC .photo { top: 0; left: 0; width: 1920px; height: 1080px; }
+  .vC .shade { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; background: radial-gradient(ellipse at 50% 40%, rgba(0,0,0,.35), rgba(0,0,0,.65)); }
+  .vC .center { position: absolute; top: 230px; left: 0; width: 1920px; text-align: center; text-shadow: 0 4px 30px rgba(0,0,0,.5); }
+  .vC .time { font-size: 260px; font-weight: 100; line-height: 1; letter-spacing: -6px; }
+  .vC .date { font-size: 44px; font-weight: 300; margin-top: 6px; opacity: .9; }
+  .vC .wx { font-size: 34px; font-weight: 300; margin-top: 14px; opacity: .8; }
+  .vC .dock { position: absolute; bottom: 70px; left: 50%; transform: translateX(-50%); display: flex; align-items: flex-end;
+    padding: 18px 22px; border-radius: 34px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2); }
+  .vC .ic { position: relative; width: 104px; height: 104px; margin: 0 10px; border-radius: 26px; font-size: 18px; transition: transform .18s, margin .18s; }
+  .vC .ic.in { background: rgba(0,0,0,.45); font-size: 22px; font-weight: 500; }
+  .vC .sep { width: 2px; height: 90px; margin: 0 14px 7px; background: rgba(255,255,255,.3); }
+  .vC .ic.f { transform: translateY(-22px) scale(1.35); margin: 0 30px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .vC .tip { position: absolute; bottom: 230px; left: 50%; transform: translateX(-50%); font-size: 30px; padding: 8px 22px;
+    border-radius: 12px; background: rgba(0,0,0,.6); }
+
+  /* ========== D: Revista (split: editorial text left, framed photo right, hourly forecast) ========== */
+  .vD { background: #f3efe8; color: #1b1b1b; width: 1920px; height: 1080px; }
+  .vD .photo { top: 60px; right: 60px; width: 1060px; height: 960px; border-radius: 6px; }
+  .vD .credit { position: absolute; right: 80px; bottom: 76px; font-size: 18px; color: #fff; text-shadow: 0 1px 8px #000; }
+  .vD .col { position: absolute; top: 70px; left: 90px; width: 640px; }
+  .vD .day { font-family: Georgia, "Times New Roman", serif; font-size: 96px; font-style: italic; line-height: 1; }
+  .vD .dm { font-family: Georgia, serif; font-size: 52px; margin-top: 6px; color: #6b6259; }
+  .vD .time { font-size: 120px; font-weight: 300; margin-top: 34px; letter-spacing: -2px; }
+  .vD .wx { font-size: 30px; margin-top: 8px; color: #4a4540; }
+  .vD .hours { display: flex; margin-top: 26px; padding: 22px 0; border-top: 2px solid #1b1b1b; border-bottom: 1px solid #c9c1b6; }
+  .vD .h { flex: 1; text-align: center; font-size: 22px; color: #6b6259; }
+  .vD .h b { display: block; font-size: 34px; color: #1b1b1b; font-weight: 500; margin-top: 6px; }
+  .vD .lbl { font-size: 18px; letter-spacing: 3px; text-transform: uppercase; color: #8a8178; margin: 30px 0 8px; }
+  .vD .grid { display: flex; flex-wrap: wrap; }
+  .vD .it { width: 50%; height: 50px; font-size: 30px; display: flex; align-items: center; }
+  .vD .it .n { padding: 2px 10px; margin-left: -10px; border-radius: 6px; }
+  .vD .it.f .n { background: #1b1b1b; color: #f3efe8; }
+  .vD .sq { width: 14px; height: 14px; margin-right: 16px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<div id="proto-bar"><button id="prev">&larr;</button><span id="vname"></span><button id="next">&rarr;</button></div>
+<script>
+(function () {
+  'use strict';
+  var APPS = [
+    ['YouTube', '#FF0000', '#fff'], ['NETFLIX', '#000', '#E50914'], ['HBO Max', '#002BE7', '#fff'],
+    ['prime video', '#00A8E1', '#fff'], ['Disney+', '#0E1B4D', '#fff'], ['Apple TV', '#1C1C1E', '#fff'],
+    ['Spotify', '#1DB954', '#000'], ['RTP Play', '#0B2A4A', '#fff'], ['Internet', '#2A3140', '#fff']
+  ];
+  var INPUTS = ['TV em direto', 'HDMI 3'];
+  var PHOTOS = [[28, 'Jerry Adney'], [29, 'Go Wild'], [37, 'Austin Neill'], [46, 'Jeffrey Kam'], [77, 'May Pamintuan'], [116, 'Anton Sulsky']];
+  var DAYS = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  var MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  function wxText(c) { return c === 0 ? 'Céu limpo' : c <= 2 ? 'Pouco nublado' : c === 3 ? 'Céu encoberto' : c <= 48 ? 'Nevoeiro' : c <= 57 ? 'Chuvisco' : c <= 67 ? 'Chuva' : c <= 82 ? 'Aguaceiros' : 'Trovoada'; }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  var W = { now: 19, hi: 22, lo: 14, text: 'Céu encoberto', hours: [] };
+  var photo = PHOTOS[Math.floor(Math.random() * PHOTOS.length)];
+  var photoUrl = 'https://picsum.photos/id/' + photo[0] + '/1920/1080';
+
+  var VARIANTS = {
+    A: { name: 'Atual (painel que sobe)', build: buildA },
+    B: { name: 'Coluna lateral', build: buildB },
+    C: { name: 'Dock ao centro', build: buildC },
+    D: { name: 'Revista', build: buildD }
+  };
+  var KEYS = ['A', 'B', 'C', 'D'];
+  var key = (/variant=([A-D])/.exec(location.search) || [])[1] || 'A';
+  var stage = document.getElementById('stage');
+  var cur = null; // { items: [{el, row, col}], focus, onKey }
+
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function brandTile(a, cls) { var t = el('div', 'brand ' + cls, a[0]); t.style.background = a[1]; t.style.color = a[2]; return t; }
+  function photoDiv() { var p = el('div', 'photo'); p.style.backgroundImage = 'url("' + photoUrl + '")'; return p; }
+  function timeStr() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function dateStr() { var d = new Date(); return DAYS[d.getDay()] + ', ' + d.getDate() + ' de ' + MONTHS[d.getMonth()]; }
+  function wxStr() { return W.now + '°  Figueira da Foz · ' + W.text + '  ·  Máx. ' + W.hi + '°  Mín. ' + W.lo + '°'; }
+
+  // Grid focus helper: items carry row/col; arrows move within/between rows.
+  function gridNav(items, start) {
+    var f = start || 0;
+    function paint() { items.forEach(function (it, i) { it.el.classList.toggle('f', i === f); }); if (cur && cur.onFocus) cur.onFocus(items[f]); }
+    function move(dr, dc) {
+      var c = items[f], best = -1, bestD = 1e9;
+      items.forEach(function (it, i) {
+        if (dr === 0 && it.row === c.row && it.col === c.col + dc) best = i;
+        if (dr !== 0 && it.row === c.row + dr) { var d = Math.abs(it.col - c.col); if (d < bestD) { bestD = d; best = i; } }
+      });
+      if (best >= 0) { f = best; paint(); return true; }
+      return false;
+    }
+    return { paint: paint, move: move, get: function () { return items[f]; } };
+  }
+
+  // ---------- A ----------
+  function buildA() {
+    var root = el('div', 'vA'); root.style.cssText = 'position:absolute;width:1920px;height:1080px';
+    root.appendChild(photoDiv()); root.appendChild(el('div', 'shade'));
+    var amb = el('div', 'amb'); amb.appendChild(el('div', 'time', timeStr())); amb.appendChild(el('div', 'date', dateStr())); amb.appendChild(el('div', 'wx', wxStr()));
+    root.appendChild(amb);
+    var panel = el('div', 'panel'); var items = [];
+    panel.appendChild(el('div', 'lbl', 'Aplicações')); var r1 = el('div', 'row');
+    APPS.slice(0, 6).forEach(function (a, i) { var t = brandTile(a, 'tile'); r1.appendChild(t); items.push({ el: t, row: 0, col: i }); });
+    panel.appendChild(r1); panel.appendChild(el('div', 'lbl', 'Fontes')); var r2 = el('div', 'row');
+    INPUTS.forEach(function (n, i) { var t = el('div', 'brand tile in', n); r2.appendChild(t); items.push({ el: t, row: 1, col: i }); });
+    panel.appendChild(r2); root.appendChild(panel);
+    var nav = gridNav(items);
+    return { root: root, open: true, onKey: function (k) {
+      if (!root.classList.contains('open')) { root.classList.add('open'); nav.paint(); return; }
+      if (k === 'Escape') { root.classList.remove('open'); return; }
+      if (k === 'ArrowUp' && nav.get().row === 0) { root.classList.remove('open'); return; }
+      nav.move(k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0, k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0);
+    }, init: function () { root.classList.add('open'); nav.paint(); } };
+  }
+
+  // ---------- B ----------
+  function buildB() {
+    var root = el('div', 'vB'); root.style.cssText = 'position:absolute;width:1920px;height:1080px';
+    root.appendChild(photoDiv());
+    var side = el('div', 'side');
+    side.appendChild(el('div', 'time', timeStr())); side.appendChild(el('div', 'date', dateStr()));
+    side.appendChild(el('div', 'wx', W.now + '° · ' + W.text + '<br>Figueira da Foz · Máx. ' + W.hi + '° Mín. ' + W.lo + '°'));
+    side.appendChild(el('div', 'lbl', 'Aplicações')); var items = [];
+    APPS.forEach(function (a, i) { var it = el('div', 'item'); var d = el('span', 'dot'); d.style.background = a[1] === '#000' ? a[2] : a[1]; it.appendChild(d); it.appendChild(document.createTextNode(a[0] === 'NETFLIX' ? 'Netflix' : a[0] === 'prime video' ? 'Prime Video' : a[0])); side.appendChild(it); items.push({ el: it, row: i, col: 0 }); });
+    side.appendChild(el('div', 'lbl', 'Fontes')); var ins = el('div', 'ins');
+    INPUTS.forEach(function (n, i) { var c = el('div', 'chip', n); ins.appendChild(c); items.push({ el: c, row: APPS.length, col: i }); });
+    side.appendChild(ins); root.appendChild(side);
+    root.appendChild(el('div', 'credit', 'Fotografia: ' + photo[1] + ' / Unsplash'));
+    var nav = gridNav(items);
+    return { root: root, onKey: function (k) { nav.move(k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0, k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0); }, init: nav.paint };
+  }
+
+  // ---------- C ----------
+  function buildC() {
+    var root = el('div', 'vC'); root.style.cssText = 'position:absolute;width:1920px;height:1080px';
+    root.appendChild(photoDiv()); root.appendChild(el('div', 'shade'));
+    var c = el('div', 'center'); c.appendChild(el('div', 'time', timeStr())); c.appendChild(el('div', 'date', dateStr()));
+    c.appendChild(el('div', 'wx', W.now + '° ' + W.text + ' · Figueira da Foz')); root.appendChild(c);
+    var tip = el('div', 'tip'); root.appendChild(tip);
+    var dock = el('div', 'dock'); var items = []; var col = 0;
+    APPS.forEach(function (a) { var t = brandTile(a, 'ic'); t.textContent = a[0] === 'prime video' ? 'prime' : a[0] === 'NETFLIX' ? 'N' : a[0] === 'Disney+' ? 'D+' : a[0] === 'Apple TV' ? 'tv' : a[0] === 'HBO Max' ? 'max' : a[0] === 'RTP Play' ? 'RTP' : a[0] === 'Internet' ? 'www' : a[0] === 'YouTube' ? '▶' : a[0]; if (a[0] === 'NETFLIX') t.style.fontSize = '54px'; if (a[0] === 'YouTube') t.style.fontSize = '46px'; dock.appendChild(t); items.push({ el: t, row: 0, col: col++, name: a[0] === 'NETFLIX' ? 'Netflix' : a[0] }); });
+    dock.appendChild(el('div', 'sep'));
+    INPUTS.forEach(function (n) { var t = el('div', 'brand ic in', n === 'TV em direto' ? 'TV' : n.replace('HDMI ', 'HDMI<br>')); dock.appendChild(t); items.push({ el: t, row: 0, col: col++, name: n }); });
+    root.appendChild(dock);
+    var nav = gridNav(items);
+    return { root: root, onFocus: function (it) { tip.textContent = it.name; tip.style.left = (it.el.offsetLeft + dock.offsetLeft - dock.offsetWidth / 2 + 52) + 'px'; },
+      onKey: function (k) { nav.move(0, k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0); }, init: nav.paint };
+  }
+
+  // ---------- D ----------
+  function buildD() {
+    var root = el('div', 'vD'); root.style.cssText = 'position:absolute';
+    root.appendChild(photoDiv()); root.appendChild(el('div', 'credit', 'Fotografia: ' + photo[1] + ' / Unsplash'));
+    var d = new Date(); var col = el('div', 'col');
+    col.appendChild(el('div', 'day', DAYS[d.getDay()].replace('-feira', '')));
+    col.appendChild(el('div', 'dm', d.getDate() + ' de ' + MONTHS[d.getMonth()]));
+    col.appendChild(el('div', 'time', timeStr()));
+    col.appendChild(el('div', 'wx', 'Figueira da Foz · ' + W.now + '° · ' + W.text + ' · Máx. ' + W.hi + '° Mín. ' + W.lo + '°'));
+    var hours = el('div', 'hours');
+    (W.hours.length ? W.hours : [['13h', 20], ['15h', 21], ['17h', 20], ['19h', 18], ['21h', 16]]).forEach(function (h) { hours.appendChild(el('div', 'h', h[0] + '<b>' + h[1] + '°</b>')); });
+    col.appendChild(hours);
+    col.appendChild(el('div', 'lbl', 'Ver')); var g = el('div', 'grid'); var items = [];
+    APPS.concat(INPUTS.map(function (n) { return [n, '#8a8178', '#fff']; })).forEach(function (a, i) {
+      var it = el('div', 'it'); var sq = el('span', 'sq'); sq.style.background = a[1] === '#000' ? a[2] : a[1]; it.appendChild(sq);
+      it.appendChild(el('span', 'n', a[0] === 'NETFLIX' ? 'Netflix' : a[0] === 'prime video' ? 'Prime Video' : a[0])); g.appendChild(it);
+      items.push({ el: it, row: Math.floor(i / 2), col: i % 2 });
+    });
+    col.appendChild(g); root.appendChild(col);
+    var nav = gridNav(items);
+    return { root: root, onKey: function (k) { nav.move(k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0, k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0); }, init: nav.paint };
+  }
+
+  function render() {
+    stage.innerHTML = '';
+    cur = VARIANTS[key].build();
+    stage.appendChild(cur.root);
+    if (cur.init) cur.init();
+    document.getElementById('vname').textContent = key + ' (' + VARIANTS[key].name + ')';
+    document.title = 'Protótipo ' + key;
+  }
+  function go(dir) {
+    key = KEYS[(KEYS.indexOf(key) + dir + KEYS.length) % KEYS.length];
+    history.replaceState(null, '', '?variant=' + key);
+    render();
+  }
+  function fit() {
+    var s = Math.min(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = 'translate(' + (innerWidth - 1920 * s) / 2 + 'px,' + (innerHeight - 1080 * s) / 2 + 'px) scale(' + s + ')';
+  }
+  document.getElementById('prev').onclick = function () { go(-1); };
+  document.getElementById('next').onclick = function () { go(1); };
+  document.addEventListener('keydown', function (e) {
+    if (e.key === '[') return go(-1);
+    if (e.key === ']') return go(1);
+    if (cur && cur.onKey && /Arrow|Escape|Enter/.test(e.key)) { cur.onKey(e.key); e.preventDefault(); }
+  });
+  window.addEventListener('resize', fit);
+  fit();
+  render();
+
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=40.1508&longitude=-8.8618&current=temperature_2m,weather_code&hourly=temperature_2m&daily=temperature_2m_max,temperature_2m_min&timezone=Europe%2FLisbon&forecast_days=2')
+    .then(function (r) { return r.json(); }).then(function (j) {
+      W.now = Math.round(j.current.temperature_2m); W.hi = Math.round(j.daily.temperature_2m_max[0]); W.lo = Math.round(j.daily.temperature_2m_min[0]);
+      W.text = wxText(j.current.weather_code);
+      var h0 = new Date().getHours(); W.hours = [];
+      for (var i = 1; i <= 5; i++) { var h = h0 + i * 2; W.hours.push([(h % 24) + 'h', Math.round(j.hourly.temperature_2m[h])]); }
+      render();
+    }).catch(function () {});
+})();
+</script>
+</body>
+</html>
