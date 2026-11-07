@@ -1,0 +1,201 @@
+/* Targets the Tizen 4 web engine (Chromium 56): flexbox with margins, no CSS grid, no flex gap. */
+:root {
+  --ink: #ffffff;
+  --ink-soft: rgba(255, 255, 255, 0.78);
+  --ink-faint: rgba(255, 255, 255, 0.5);
+  --panel: rgba(10, 12, 16, 0.72);
+  --focus: #ffffff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0d12;
+  color: var(--ink);
+  font-family: "SamsungOneUI", "Samsung Sans", "Roboto", "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Everything is laid out on a fixed 1920x1080 stage that app.js scales to the real page size.
+   The TV's web page is not 1920x1080 (measured from a photo: about 2780 wide), so fixed
+   pixel sizes alone left the picture in the top-left corner. */
+#stage {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  transform-origin: 0 0;
+}
+
+.bg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1920px;
+  height: 1080px;
+  background: #0b0d12 center / cover no-repeat;
+  opacity: 0;
+  transition: opacity 3s ease, transform 70s linear;
+  transform: scale(1);
+}
+.bg.on { opacity: 1; transform: scale(1.08); }
+
+.shade {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1920px;
+  height: 1080px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.7) 100%),
+              linear-gradient(90deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 60%);
+}
+
+#ambient {
+  position: absolute;
+  left: 120px;
+  bottom: 140px;
+  text-shadow: 0 2px 24px rgba(0,0,0,0.45);
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+#time {
+  font-size: 220px;
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: -4px;
+}
+#date {
+  margin-top: 12px;
+  font-size: 48px;
+  font-weight: 300;
+  color: var(--ink-soft);
+}
+#weather {
+  margin-top: 28px;
+  font-size: 40px;
+  font-weight: 300;
+  color: var(--ink-soft);
+}
+#weather .temp { color: var(--ink); font-weight: 400; margin-right: 18px; }
+#weather .range { color: var(--ink-faint); margin-left: 18px; }
+
+#ambient { transform-origin: left bottom; }
+body.panel-open #ambient { transform: translateY(-500px) scale(0.55); }
+
+#hint {
+  position: absolute;
+  right: 120px;
+  bottom: 70px;
+  font-size: 26px;
+  color: var(--ink-faint);
+  transition: opacity 0.5s ease;
+}
+body.panel-open #hint { opacity: 0; }
+
+#credit {
+  position: absolute;
+  right: 120px;
+  bottom: 40px;
+  font-size: 18px;
+  color: rgba(255,255,255,0.35);
+}
+body.panel-open #credit { opacity: 0; }
+
+#panel {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1920px;
+  padding: 44px 120px 70px;
+  background: linear-gradient(180deg, rgba(10,12,16,0) 0%, var(--panel) 18%, rgba(8,9,12,0.92) 100%);
+  transform: translateY(100%);
+  visibility: hidden;
+  transition: transform 0.45s cubic-bezier(.2,.8,.2,1), visibility 0s linear 0.45s;
+}
+body.panel-open #panel { transform: translateY(0); visibility: visible; transition-delay: 0s; }
+
+.row-label {
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 18px 0 16px 4px;
+}
+.row {
+  display: flex;
+  flex-wrap: nowrap;
+  height: 196px;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.tile {
+  position: relative;
+  flex: 0 0 auto;
+  width: 280px;
+  height: 160px;
+  margin-right: 28px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.tile img { max-width: 62%; max-height: 62%; }
+.tile .label {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  text-align: center;
+  padding: 0 16px;
+}
+.tile.has-icon .label {
+  position: absolute;
+  bottom: 10px;
+  left: 0; right: 0;
+  font-size: 20px;
+  font-weight: 400;
+  opacity: 0;
+}
+.tile.focus {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 5px var(--focus), 0 18px 40px rgba(0,0,0,0.55);
+  z-index: 2;
+}
+.tile.focus.has-icon .label { opacity: 1; }
+
+.tile.input { background: rgba(255,255,255,0.12); width: 220px; }
+.tile.input .label { font-size: 34px; font-weight: 500; }
+.tile.input .sub {
+  position: absolute;
+  bottom: 14px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 20px;
+  color: var(--ink-faint);
+}
+
+#toast {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  width: 900px;
+  margin-left: -450px;
+  padding: 22px 30px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.8);
+  font-size: 28px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#toast.on { opacity: 1; }
+
+/* While an HDMI or TV source is showing through tvwindow, everything else steps aside. */
+body.source-on .bg, body.source-on .shade, body.source-on #ambient,
+body.source-on #panel, body.source-on #hint, body.source-on #credit { visibility: hidden; }
+body.source-on { background: transparent; }
