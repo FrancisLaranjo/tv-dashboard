@@ -260,12 +260,12 @@
     if (!items.length) return;
     focus = Math.max(0, Math.min(items.length - 1, focus));
     items.forEach(function (it, i) { it.el.classList.toggle('focus', i === focus); });
-    var it = items[focus], dock = $('dock'), tip = $('tip');
-    tip.textContent = it.name;
-    // the dock is centred with translateX(-50%), so its offsetLeft is its centre line
-    setTimeout(function () {
-      tip.style.left = (dock.offsetLeft - dock.offsetWidth / 2 + it.el.offsetLeft + it.el.offsetWidth / 2) + 'px';
-    }, 200);
+    // The name label lives inside the selected icon, so it moves and grows with it and can
+    // never point at the wrong icon while the dock is still animating.
+    var label = $('label');
+    if (!label) { label = document.createElement('div'); label.id = 'label'; }
+    label.textContent = items[focus].name;
+    items[focus].el.appendChild(label);
   }
   function wake() {
     document.body.classList.remove('dim');
