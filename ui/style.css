@@ -174,13 +174,6 @@ body.dim .ic.focus { transform: none; margin: 0 10px; }
 }
 body.dim #label { opacity: 0; }
 
-#credit {
-  position: absolute;
-  right: 60px;
-  bottom: 24px;
-  font-size: 18px;
-  color: rgba(255,255,255,0.4);
-}
 
 #toast {
   position: absolute;
@@ -199,6 +192,5 @@ body.dim #label { opacity: 0; }
 #toast.on { opacity: 1; }
 
 /* While an HDMI or TV source shows through tvwindow, everything else steps aside. */
-body.source-on .bg, body.source-on .shade, body.source-on #center, body.source-on #dock,
-body.source-on #credit { visibility: hidden; }
+body.source-on .bg, body.source-on .shade, body.source-on #center, body.source-on #dock { visibility: hidden; }
 body.source-on { background: transparent; }

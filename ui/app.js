@@ -133,7 +133,6 @@
       back.classList.add('on');
       layers[front].classList.remove('on');
       front = 1 - front;
-      $('credit').textContent = 'Fotografia: ' + p[1] + ' / Unsplash  ·  ' + String(window.__dashVersion || 'dev').slice(0, 7);
     };
     img.onerror = function () { setTimeout(nextPhoto, 15000); };
     img.src = url;
@@ -388,6 +387,7 @@
   // the dashboard puts itself back in front, which closes Samsung's bar.
   var HOME_TAKEOVER = true;
   var TAKE_BACK_MS = 1200;
+  var QUIET_MS = 30 * 1000;
   function runningIds(cb) {
     try {
       tz.application.getAppsContext(function (list) { cb(list.map(function (c) { return c.appId; })); }, function () { cb([]); });
@@ -395,14 +395,16 @@
   }
   function maybeTakeBack(why) {
     if (!HOME_TAKEOVER || !onTV || sourceOn) return;
-    if (Date.now() - ownLeaveAt < 5000) return; // we opened an app or hid ourselves on purpose
+    // We opened an app or hid ourselves on purpose. 30 s, because some apps (TizenBrew for
+    // YouTube) close and reopen themselves a few seconds after starting, which looks like Home.
+    if (Date.now() - ownLeaveAt < QUIET_MS) return;
     runningIds(function (before) {
       setTimeout(function () {
         runningIds(function (after) {
           var fresh = after.filter(function (id) { return before.indexOf(id) < 0; });
           var stillAway = document.hidden || !document.hasFocus();
           log('takeback-check', { why: why, fresh: fresh, stillAway: stillAway, running: after });
-          if (stillAway && !fresh.length && Date.now() - ownLeaveAt > 5000) bringToFront('takeback-' + why);
+          if (stillAway && !fresh.length && Date.now() - ownLeaveAt > QUIET_MS) bringToFront('takeback-' + why);
         });
       }, TAKE_BACK_MS);
     });
