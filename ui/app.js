@@ -280,6 +280,28 @@
   setInterval(loadWeather, WEATHER_MS);
   nextPhoto();
   setInterval(nextPhoto, PHOTO_MS);
+
+  // ---------- come to the front when the TV wakes ----------
+  // The app keeps running in the background (background-support in config.xml). Samsung's
+  // "Instant On" standby freezes it, so after a wake the wall clock has jumped far past this
+  // timer's period. That jump is the power-on signal: bring the dashboard to the front, over
+  // Samsung's home bar or whatever app was open before standby. Ordinary background
+  // throttling never stalls a timer for minutes, so 2 minutes keeps false wakes out.
+  var WAKE_GAP_MS = 2 * 60 * 1000;
+  var lastTick = Date.now();
+  setInterval(function () {
+    var now = Date.now();
+    if (onTV && now - lastTick > WAKE_GAP_MS) {
+      setTimeout(function () {
+        try {
+          var me = tz.application.getCurrentApplication().appInfo.id;
+          tz.application.launch(me, function () {}, function () {});
+        } catch (e) { /* ignore */ }
+      }, 3000);
+    }
+    lastTick = now;
+  }, 5000);
+
   // tells shell.js this UI version started cleanly
   window.__dashOk = true;
 
