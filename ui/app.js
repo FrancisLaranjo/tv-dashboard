@@ -209,7 +209,11 @@
   }
 
   var ownLeaveAt = 0; // when this app last sent itself to the background on purpose
-  function launchApp(a) {
+  var lastLaunch = null; // { app, at, retried } for the bounce retry below
+  function launchApp(a, isRetry) {
+    // a second OK press while the app is still opening would launch it twice
+    if (!isRetry && lastLaunch && Date.now() - lastLaunch.at < 1500) return;
+    lastLaunch = { app: a, at: Date.now(), retried: !!isRetry };
     ownLeaveAt = Date.now();
     log('launch', { id: a.id });
     try {
@@ -317,6 +321,13 @@
   document.addEventListener('visibilitychange', function () {
     log('visibility', { hidden: document.hidden, ownLeaveMsAgo: Date.now() - ownLeaveAt });
     if (document.hidden) { maybeTakeBack('hidden'); return; }
+    // TizenBrew (YouTube) sometimes quits by itself a second or three after opening, and the
+    // second try stays open (TV log, 2026-11-07). Back this soon means it bounced: try once more.
+    if (lastLaunch && !lastLaunch.retried && Date.now() - lastLaunch.at < 6000) {
+      log('bounce-retry', { id: lastLaunch.app.id, ms: Date.now() - lastLaunch.at });
+      launchApp(lastLaunch.app, true);
+      return;
+    }
     if (sourceOn) closeSource();
     focus = 0;
     paintFocus();
@@ -438,6 +449,32 @@
 
   // tells shell.js this UI version started cleanly
   window.__dashOk = true;
+
+  // ---------- keep the wake service running ----------
+  // The TV never started TvHomeDash.Wake by itself (absent from its running apps on
+  // 2026-11-07), so the dashboard starts it. The service brings the dashboard to the front
+  // when the TV wakes from standby. Logged so the next power-on shows whether it survives.
+  var SERVICE_ID = 'TvHomeDash.Wake';
+  function ensureService(reason) {
+    if (!onTV) return;
+    runningIds(function (ids) {
+      var mine = ids.filter(function (id) { return /TvHomeDash|xvvl3S1bvH/.test(id); });
+      log('service-check', { why: reason, running: mine });
+      if (ids.indexOf(SERVICE_ID) >= 0) return;
+      try {
+        tz.application.launchAppControl(
+          new tz.ApplicationControl('http://tizen.org/appcontrol/operation/service'), SERVICE_ID,
+          function () { log('service-started', { how: 'appcontrol' }); },
+          function (e) {
+            log('service-appcontrol-failed', e.name + ': ' + e.message);
+            tz.application.launch(SERVICE_ID, function () { log('service-started', { how: 'launch' }); },
+              function (e2) { log('service-failed', e2.name + ': ' + e2.message); });
+          });
+      } catch (e) { log('service-failed', e.name + ': ' + e.message); }
+    });
+  }
+  setTimeout(function () { ensureService('start'); }, 3000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) ensureService('visible'); });
 
   installedMap(function (m, apps) {
     buildApps(m);
